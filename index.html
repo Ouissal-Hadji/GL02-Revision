@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>GL2 Chapter 1 + Diagrams: Revision</title>
+<style>
+:root{--bg:#fafaf7;--fg:#1d1d1b;--card:#fff;--bd:#d9d7cf;--ac:#0b6e4f;--ac2:#e8f3ee;--bad:#b3261e;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#16181a;--fg:#ecece8;--card:#202326;--bd:#383c40;--ac:#5fd0a5;--ac2:#1d2f28;--bad:#ff8a80}}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.55 system-ui,-apple-system,"Segoe UI",sans-serif;padding:12px}
+h1{font-size:1.3rem;margin:.2rem 0}h2{font-size:1.1rem;margin:1.2rem 0 .4rem;color:var(--ac)}
+nav{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0}
+button{font:inherit;border:1px solid var(--bd);background:var(--card);color:var(--fg);border-radius:8px;padding:8px 12px;cursor:pointer}
+button.on,button.pri{background:var(--ac);color:var(--bg);border-color:var(--ac)}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:12px;padding:14px;margin:10px 0;max-width:100%}
+.scroll{overflow-x:auto}pre{margin:0;white-space:pre;font-size:.85rem}
+pre.mermaid{background:var(--card);border-radius:8px;padding:8px;overflow-x:auto}
+.fc{min-height:150px;display:flex;align-items:center;justify-content:center;text-align:center;font-size:1.1rem;white-space:pre-line;cursor:pointer}
+.opt{display:block;width:100%;text-align:left;margin:6px 0}.ok{border-color:var(--ac);background:var(--ac2)}.no{border-color:var(--bad)}
+.tag{font-size:.8rem;opacity:.7}table{border-collapse:collapse;width:100%;font-size:.9rem}td,th{border:1px solid var(--bd);padding:5px 8px;text-align:left;vertical-align:top}
+.ar{direction:rtl;text-align:right}details summary{cursor:pointer;color:var(--ac);font-weight:600}
+</style></head><body>
+<h1>GL2 · Chapter 1 + DCU / DCL / DSE</h1>
+<div class="tag">Examples · Flashcards · Quiz · Practice · Fiche → DSS. Bilingual EN / عربي.</div>
+<nav id="nav"></nav><main id="m"></main>
+
+<template id="t-ex">
+<h2>1. Use case diagram (DCU): Library TD</h2>
+<div class="tag">Mermaid draws it as a flowchart. On paper use stick figures and ellipses. Arrow rule: include → toward the included case; extend → toward the base case; “is a” = hollow triangle.</div>
+<pre class="mermaid">flowchart LR
+Lib((Librarian)) --- AddS([Add student])
+Lib --- Rem([Remove student])
+Lib --- Card([Print library card])
+Lib --- AddB([Add book])
+Lib --- Rent([Rent book])
+Lib --- Ret([Return book])
+AddS -.->|include| Ver([Verify registration])
+Card -.->|extend| AddS
+Search([Search book]) -.->|extend| AddB
+Rent -.->|include| Search
+Ret -.->|include| Search
+SA([By author]) -->|is a| Search
+ST([By title]) -->|is a| Search
+SP([By publisher]) -->|is a| Search
+Stu((Student)) --- Search
+Reg((Registered student)) -->|is a| Stu
+Reg --- Hist([View history])</pre>
+<h2>2. Class diagram (DCL): AutoChauffeur TD</h2>
+<pre class="mermaid">classDiagram
+class ParentCompany{+name}
+class Agency{+name +city}
+class Vehicle{<<abstract>> +licensePlate +brand +model +baseDailyRate}
+class Car{+numberOfSeats +category}
+class Truck{+tonnageCapacity +volumeM3}
+class Driver{+badgeCode +lastName +firstName +licenseNumber}
+class Customer{+clientId +name +phone +email}
+class RentalContract{+startDate +endDate +totalPrice}
+ParentCompany "1" *-- "1..*" Agency : composed of
+Agency "1" o-- "0..*" Vehicle : manages
+Agency "1" *-- "0..*" Driver : employs
+Vehicle <|-- Car
+Vehicle <|-- Truck
+Driver "1" --> "0..*" Vehicle : drives
+Customer "1" --> "0..*" RentalContract : makes
+RentalContract "0..*" --> "1" Vehicle : concerns</pre>
+<h3>Java (rule: 1 → field, * → List, inheritance → extends)</h3>
+<div class="card scroll"><pre>public abstract class Vehicle {
+  protected String licensePlate, brand, model;
+  protected double baseDailyRate;
+  protected Agency agency;                   // 1
+  protected Driver driver;                   // 1
+  protected List&lt;RentalContract&gt; contracts;  // 0..*
+}
+public class Car extends Vehicle {
+  private int numberOfSeats; private String category;
+}
+public class Truck extends Vehicle {
+  private double tonnageCapacity, volumeM3;
+}
+public class Agency {
+  private String name, city;
+  private ParentCompany company;             // 1
+  private List&lt;Vehicle&gt; vehicles;            // 0..* aggregation
+  private List&lt;Driver&gt; drivers;              // 0..* composition
+}</pre></div>
+<h3>Relational model (MLD): PK = underlined here as _x_, FK = *</h3>
+<div class="card scroll"><pre>Company  (_id_C_, name)
+Agency   (_id_A_, name, city, id_C*)
+Driver   (_badgeCode_, lastName, firstName, licenseNumber, id_A*)
+Vehicle  (_licensePlate_, brand, model, baseDailyRate, id_A*, badgeCode*)
+Car      (_id_Ca_, numSeat, category, licensePlate*)
+Truck    (_id_T_, capacity, volume, licensePlate*)
+Client   (_id_cl_, name, phone, email)
+Contract (_id_contract_, startDate, endDate, totalPrice, id_cl*, licensePlate*)</pre></div>
+<div class="tag">Rules: class → table · 1—* → FK on the * side · *—* or association class → new table · inheritance → child table with FK to parent.</div>
+<h2>3. Sequence diagram (DSE): Checkout TD</h2>
+<pre class="mermaid">sequenceDiagram
+actor C as Customer
+actor K as Cashier
+participant R as Register
+loop for each item
+C->>K: 1 give_item()
+K->>R: 2 record_item_and_qty()
+R-->>K: 3 display_price_and_description
+end
+K->>R: 4 signal_end_of_sale()
+R-->>K: 5 show_total_amount
+K->>C: 6 announce_total_amount
+C->>K: 7 choose_payment_method(method)
+alt method = Cash
+K->>R: 8 enter_cash_received()
+R->>R: 9 calculate_change()
+R-->>K: 10 display_change
+else method = Credit card
+K->>R: 11 send_authorization_request()
+end
+R->>R: 12 record_sale()
+R->>R: 13 print_receipt()
+R-->>K: 14 dispense_receipt
+K->>C: 15 give_receipt_to_customer</pre>
+<div class="tag">Collaboration diagram = same messages drawn on links between objects (Customer—Cashier—Register), numbered 1, 2, 3… with guards like 8a [cash] / 8b [card].</div>
+</template>
+
+<template id="t-fs">
+<h2>From a use case sheet to a system sequence diagram (2025/26 exam: “S’inscrire”)</h2>
+<table><tr><th>Sheet part</th><th>Becomes</th></tr>
+<tr><td>Nominal scenario 1–6</td><td>Plain messages Visitor ↔ System, in order</td></tr>
+<tr><td>A1: missing or wrong info, back to step 2</td><td><b>loop</b> [incorrect info] around form + verify</td></tr>
+<tr><td>A2 buyer / A3 seller</td><td><b>alt</b> [type = buyer] / [type = seller] (seller: ask docs, save, notify admin)</td></tr>
+<tr><td>E1: visitor does not answer, system cancels</td><td><b>break</b> or opt with a cancel message</td></tr>
+<tr><td>Other use case reused (manage accounts)</td><td><b>ref</b> frame</td></tr></table>
+<pre class="mermaid">sequenceDiagram
+actor V as Visitor
+participant S as System
+actor A as Admin
+V->>S: 1 requestRegistration()
+loop while info incorrect
+S-->>V: 2 form
+V->>S: 3 fillForm()
+S->>S: 4 verifyForm()
+end
+S-->>V: 5 askAccountType()
+V->>S: 6 type
+alt type = seller
+S-->>V: 7 askDocuments()
+V->>S: 8 documents
+S->>S: 9 saveAccount()
+S->>A: 10 notify(verification)
+else type = buyer
+S->>S: 11 saveAccount()
+S-->>V: 12 displayHome()
+end</pre>
+<div class="tag">Method: 1) one sentence = one message 2) add dashed returns 3) wrap repetition in loop, if/else in alt, abort in break 4) number everything 5) frame with sd.</div>
+</template>
+
+<template id="t-pr">
+<h2>Practice: fresh exam-style exercise (20 pts)</h2>
+<div class="card"><b>Bike sharing app.</b> A customer registers, then can search stations by city. To rent a bike he must be authenticated and the system checks availability; he can optionally enter a promo code. When he returns the bike the system computes the price and charges his card automatically. A rental has a start and end time. A station has a name, city and capacity and holds many bikes. A bike is either Electric (battery level) or Classic (number of gears). The admin adds bikes and can block a customer.
+<br><b>Q1</b> Use case diagram (7) · <b>Q2</b> Domain class diagram with attributes (7) · <b>Q3</b> Detailed or system sequence diagram of “Rent a bike” with an alternative and an exception (6).
+<br><i>Draw on paper first (15 min), then open the model answer.</i></div>
+<details><summary>Model answer</summary>
+<pre class="mermaid">flowchart LR
+Cu((Customer)) --- Reg([Register])
+Cu --- Se([Search stations])
+Cu --- Rt([Rent bike])
+Cu --- Rb([Return bike])
+Rt -.->|include| Au([Authenticate])
+Rt -.->|include| Av([Check availability])
+Pr([Enter promo code]) -.->|extend| Rt
+Rb -.->|include| Pay([Pay by card])
+Ad((Admin)) --- Ab([Add bike])
+Ad --- Bl([Block customer])</pre>
+<pre class="mermaid">classDiagram
+class Station{+name +city +capacity}
+class Bike{<<abstract>> +id}
+class Electric{+batteryLevel}
+class Classic{+gears}
+class Customer{+name +email}
+class Rental{+startTime +endTime +price}
+Station "1" o-- "0..*" Bike : holds
+Bike <|-- Electric
+Bike <|-- Classic
+Customer "1" --> "0..*" Rental : makes
+Rental "0..*" --> "1" Bike : concerns</pre>
+<pre class="mermaid">sequenceDiagram
+actor C as Customer
+participant S as System
+C->>S: 1 rentBike(bikeId)
+S->>S: 2 checkAvailability()
+alt bike available
+opt promo code
+C->>S: 3 enterPromo(code)
+end
+S-->>C: 4 rentalConfirmed
+else not available
+S-->>C: 5 unavailableMessage
+end
+break user cancels
+C->>S: 6 cancel()
+end</pre></details>
+<h2>Self-grade</h2><div class="card" id="gr"></div>
+</template>
+
+<script>
+const $=s=>document.querySelector(s),M=$('#m');
+const FC=[
+["The 5 characteristics of UP","UML · use-case driven · iterative & incremental · architecture-centred · risk-driven\nخمس خصائص"],
+["UP primary elements: who / what / how / when","Roles / Artifacts / Activities / Workflow"],
+["Milestone at the end of Inception, Elaboration, Construction, Transition","Vision · Architecture · Beta version · Version 1"],
+["Which phase makes the use case diagram? The class diagram? The deployment diagram?","Inception · Elaboration · Construction"],
+["When do we plan use cases, and why?","Before their textual and graphical description. Iterations get use cases by priority, riskiest first (iterative + risk-driven)."],
+["Tests in Construction vs Transition","Construction: no users. Transition: real users, beta tests."],
+["Why is the use case model both input and output of analysis?","The output is the refinement of the input."],
+["Roles of each activity","Requirements: analysts · Analysis: analysts · Design: designers/architects · Implementation: developers/integrators · Test: testers"],
+["A use case is described by…","Descriptive sheet, system sequence diagram, activity diagram"],
+["include or extend? “must / before / obligatory”","include (mandatory). Arrow from the base to the included case.\nإلزامي"],
+["include or extend? “can / if he wishes / optional”","extend. Arrow from the optional case to the base.\nاختياري"],
+["When do you use generalization in a DCU?","“Types of”: search by author/title, registered student is a student.\nأنواع"],
+["Aggregation vs composition test","Delete the whole: parts die → composition (filled diamond), survive → aggregation (hollow).\nتركيب / تجميع"],
+["How do you read multiplicity?","The number at class B answers: how many B for one A?"],
+["Association → relational model","1—* : FK on the * side. *—* or association class: new table with 2 FKs. Inheritance: child table with FK to parent."],
+["Sequence fragments","loop = repeat · alt = if/else · opt = if · break = abort · ref = see other diagram"],
+["System sequence diagram vs detailed","System: actor + one black-box system. Detailed: boundary, control, entity objects, «create»."],
+["Jacobson stereotypes","boundary (presentation) · control (processing) · entity (data)"],
+["Define: development process / architecture / actor / glossary","Process: who does what, when, how; a sequence of steps giving a quality system on predictable time and cost.\nArchitecture: skeleton of the system, its main elements and their relations.\nActor: role of an entity external to the system.\nGlossary: key business terms; resolves synonyms and homonyms."],
+["Test levels","Unit · integration · acceptance (réception) · performance · non-regression"],
+["A good architecture is…","Supports use cases · adaptable to change · favours reuse · easy to understand.\nInfluenced by: languages/frameworks, platform, reusable components, deployment and non-functional constraints."],
+["Why is modelling important?","Clarifies requirements · eases communication · reduces errors · structures development · improves maintainability"],
+["The 3 UML axes","Functional: use case · Structural: class, object, component, deployment · Dynamic: sequence, collaboration, activity, state"],
+["UML vs UP","UML = graphical language, no order of use. UP = process that says which diagram, when, by whom.\nUML لغة رسم، UP طريقة عمل"],
+["Objectives of UP","Quality software within time, cost, performance · efficient development, fewer risks · best practices"],
+["Advantages of iterative development","Risk and complexity management · fast feedback · flexibility · continuous integration and quality · stakeholder engagement · faster, cheaper"],
+["Inception: goal, activities, deliverable","Feasibility, risks, functional and non-functional needs, estimation, main use cases.\nDeliverable: cahier des charges. Milestone: Vision."],
+["Elaboration: goal, deliverable","Detailed analysis of the technical domain, stable reference architecture, quality levels, detailed planning.\nDeliverable: executable architecture."],
+["Construction: goal, deliverable","Design, implementation, tests; builds all planned use cases.\nDeliverable: beta version (may still have defects)."],
+["Transition: goal, deliverable","Delivery to real users, beta tests, user training and manuals, support.\nDeliverable: Version 1."],
+["The two axes of UP (Figure 2)","Horizontal = time, dynamic: phases and iterations. Vertical = static: activities, workflows, artifacts, roles."],
+["Iteration vs phase vs cycle vs milestone","Iteration: mini-project inside a phase. Phase: 4 per cycle. Cycle: the 4 phases, gives a version. Milestone: validates the end of a phase or iteration."],
+["Figure 1: the use case model is…","specified by analysis, realized by design, distributed by deployment, implemented by implementation, verified by test"],
+["Why is UP use-case driven?","Validates needs with users · all models derive from it · used through the whole cycle"],
+["Inputs and outputs of the models","Analysis: in use case model → out class/sequence/activity/state diagrams.\nDesign: in analysis model → out design classes, subsystems.\nDeployment: in design model → out component and deployment diagrams."],
+["Well-known adaptations of UP","RUP, XP (eXtreme Programming), 2TUP"]];
+const Q=[
+["Which is NOT a primary UP element?",["Artifact","Milestone","Activity","Workflow"],1,"The four are artifacts, roles, activities, workflow."],
+["The Vision milestone ends…",["Inception","Elaboration","Construction","Transition"],0,"Vision → Architecture → Beta → Version 1."],
+["“The system must verify registration before adding a student” is…",["extend","include","generalization","association"],1,"“Must / before” means mandatory: include."],
+["Where does the extend arrow point?",["To the optional case","To the base case","To the actor","Nowhere"],1,"From the optional case to the base."],
+["UP is “centred on…”",["classes","actors","architecture","code"],2,"Architecture-centred, use-case driven."],
+["The part dies with the whole:",["Aggregation","Composition","Association","Dependency"],1,"Composition, filled diamond."],
+["1—* association in the MLD:",["FK on the 1 side","FK on the * side","No FK","Merge tables"],1,"The foreign key goes on the * side."],
+["Which fragment models an error exit?",["loop","alt","break","ref"],2,"break aborts the scenario."],
+["Tests without users happen in…",["Inception","Elaboration","Construction","Transition"],2,"Transition has real users."],
+["Planning of use cases satisfies which characteristic?",["UML-based","Iterative and incremental","Architecture-centred","None"],1,"Use cases are assigned to iterations by priority and risk."]];
+let st={};try{st=JSON.parse(localStorage.getItem('gl2')||'{}')}catch(e){}
+const save=()=>{try{localStorage.setItem('gl2',JSON.stringify(st))}catch(e){}};
+const tabs={ex:'Examples',fc:'Flashcards',qz:'Quiz',pr:'Practice',fs:'Fiche → DSS'};
+function nav(k){$('#nav').innerHTML=Object.entries(tabs).map(([a,b])=>`<button class="${a==k?'on':''}" data-k="${a}">${b}</button>`).join('');
+$('#nav').querySelectorAll('button').forEach(b=>b.onclick=()=>show(b.dataset.k));}
+function mm(){try{if(window.mermaid)mermaid.run({querySelector:'pre.mermaid:not([data-processed])'})}catch(e){}}
+function show(k){nav(k);if(location.hash!=='#'+k)location.hash=k;
+if(k=='ex'||k=='pr'||k=='fs'){M.innerHTML='';M.append($('#t-'+k).content.cloneNode(true));if(k=='pr')grade();mm();}
+if(k=='fc')fc();if(k=='qz')qz(0,0);}
+let i=0,fl=false;
+function fc(){const k=st.known||[];M.innerHTML=`<div class="tag">Card ${i+1}/${FC.length} · known: ${k.length}</div><div class="card fc" id="c" dir="auto">${fl?FC[i][1]:FC[i][0]}</div><button id="p">←</button> <button id="n">→</button> <button class="pri" id="k">${k.includes(i)?'Known ✓':'Mark known'}</button>`;
+$('#c').onclick=()=>{fl=!fl;fc()};$('#p').onclick=()=>{i=(i+FC.length-1)%FC.length;fl=false;fc()};$('#n').onclick=()=>{i=(i+1)%FC.length;fl=false;fc()};
+$('#k').onclick=()=>{const s=new Set(st.known||[]);s.has(i)?s.delete(i):s.add(i);st.known=[...s];save();fc()};}
+function qz(n,sc){if(n>=Q.length){M.innerHTML=`<div class="card"><h2>Score: ${sc}/${Q.length}</h2>${sc>=9?'Excellent, that is 17/20 level.':'Re-read the flashcards you missed, then retry.'}<br><button class="pri" id="r">Retry</button></div>`;$('#r').onclick=()=>qz(0,0);return}
+const q=Q[n];M.innerHTML=`<div class="tag">Question ${n+1}/${Q.length}</div><div class="card"><b>${q[0]}</b>${q[1].map((o,j)=>`<button class="opt" data-j="${j}">${o}</button>`).join('')}<div id="e"></div></div>`;
+M.querySelectorAll('.opt').forEach(b=>b.onclick=()=>{const j=+b.dataset.j;M.querySelectorAll('.opt').forEach((x,y)=>{x.disabled=true;if(y==q[2])x.classList.add('ok')});if(j!=q[2])b.classList.add('no');
+$('#e').innerHTML=`<p>${q[3]}</p><button class="pri" id="x">Next</button>`;$('#x').onclick=()=>qz(n+1,sc+(j==q[2]?1:0))});}
+const G=["Actors outside the box, all present","Use case names start with a verb","include and extend arrows in the right direction","Generalization or optional case where needed","Every class has attributes","Multiplicities on both ends","Inheritance triangle at the parent (abstract Bike)","Composition/aggregation chosen with the delete test","Sequence has numbered messages and dashed returns","alt, opt and break used correctly"];
+function grade(){$('#gr').innerHTML=G.map((g,j)=>`<label style="display:block"><input type="checkbox" data-j="${j}"> ${g}</label>`).join('')+'<p><b id="s">0/20</b></p>';
+$('#gr').querySelectorAll('input').forEach(c=>c.onchange=()=>{$('#s').textContent=$('#gr').querySelectorAll('input:checked').length*2+'/20'})}
+const s=document.createElement('script');s.type='module';
+show((location.hash||'#ex').slice(1)in tabs?(location.hash||'#ex').slice(1):'ex');
+window.addEventListener('hashchange',()=>{const h=location.hash.slice(1);if(h in tabs)show(h)});
+</script>
+
+<!--claude-mermaid-runtime-begin:3477-->
+<style>.mermaid-diagram{margin-block:4px}.mermaid-diagram svg{display:block;margin:0 auto;max-width:100%;height:auto}</style>
+<script src="/_runtime/mermaid-11.16.1.min.js"></script>
+<script>(function(){
+var CFG={"palettes":{"light":{"surface":"#f4efe4","text":"#42392e","line":"#8a7f6d","border":"#7a6c52","bg":"#fffdf8"},"dark":{"surface":"#262b34","text":"#f2f3f5","line":"#a8adb8","border":"#9aa4b8","bg":"#1f232b"}}};
+if(typeof mermaid==='undefined')return;
+var pres=Array.prototype.slice.call(document.querySelectorAll('pre.mermaid')).filter(function(p){if(p.hasAttribute('data-claude-mermaid-claimed'))return false;p.setAttribute('data-claude-mermaid-claimed','1');return true;});
+if(!pres.length)return;
+var mq=window.matchMedia?window.matchMedia('(prefers-color-scheme: dark)'):null;
+var root=document.documentElement;
+var items=pres.map(function(pre){
+var mount=document.createElement('div');mount.className='mermaid-diagram';
+return {pre:pre,mount:mount,src:pre.textContent||''};
+});
+var seq=0;
+var renderGen=0;
+var lastKey='';
+function pageBg(fallback){
+var els=[document.body,document.documentElement];
+for(var i=0;i<els.length;i++){
+var c=els[i]&&getComputedStyle(els[i]).backgroundColor;
+if(c&&c!=='transparent'&&c!=='rgba(0, 0, 0, 0)')return c;
+}
+return fallback;
+}
+function render(){
+var theme=root.getAttribute('data-theme');
+var dark=theme==='dark'||(!!(mq&&mq.matches)&&theme!=='light');
+var pal=dark?CFG.palettes.dark:CFG.palettes.light;
+var bg=pageBg(pal.bg);
+var key=(dark?'d':'l')+'|'+bg;
+if(key===lastKey)return;
+lastKey=key;
+var gen=++renderGen;
+var font=getComputedStyle(document.body).fontFamily||'sans-serif';
+var nat={useMaxWidth:false};
+mermaid.initialize({
+startOnLoad:false,securityLevel:'strict',theme:'base',
+flowchart:nat,sequence:nat,er:nat,state:nat,class:nat,pie:nat,
+gantt:nat,journey:nat,timeline:nat,gitGraph:nat,mindmap:nat,xyChart:nat,
+quadrantChart:nat,sankey:nat,c4:nat,requirement:nat,block:nat,
+packet:nat,kanban:nat,architecture:nat,radar:nat,
+themeVariables:{background:bg,mainBkg:pal.surface,primaryColor:pal.surface,
+primaryTextColor:pal.text,lineColor:pal.line,primaryBorderColor:pal.border,
+nodeBorder:pal.border,clusterBorder:pal.border,edgeLabelBackground:bg,
+clusterBkg:'rgba(127,127,127,0.07)',titleColor:pal.text,
+darkMode:dark,rowOdd:bg,rowEven:'rgba(127,127,127,0.07)',
+attributeBackgroundColorOdd:bg,attributeBackgroundColorEven:'rgba(127,127,127,0.07)',
+fontSize:'16px',fontFamily:font},
+themeCSS:'.node rect, .node circle, .node polygon, .node path, .cluster rect { stroke-width: 2px; }'
+});
+items.forEach(function(it){
+var id='claude-mermaid-'+seq++;
+mermaid.render(id,it.src).then(function(r){
+if(gen!==renderGen)return;
+var prev=it.pre.previousElementSibling;
+if(prev&&prev.className==='mermaid-diagram'&&prev!==it.mount)return;
+it.mount.innerHTML=r.svg;
+if(!it.mount.parentNode)it.pre.parentNode.insertBefore(it.mount,it.pre);
+it.pre.style.display='none';
+},function(){
+var scratch=document.getElementById(id);
+if(scratch)scratch.parentNode.removeChild(scratch);
+scratch=document.getElementById('d'+id);
+if(scratch)scratch.parentNode.removeChild(scratch);
+if(gen!==renderGen)return;
+if(it.mount.parentNode)it.mount.parentNode.removeChild(it.mount);
+it.pre.style.display='';
+});
+});
+}
+render();
+if(mq&&mq.addEventListener)mq.addEventListener('change',render);
+if(typeof MutationObserver!=='undefined')new MutationObserver(render).observe(root,{attributes:true,attributeFilter:['data-theme']});
+})();</script>
+<!--claude-mermaid-runtime-end-->
+</body></html>
